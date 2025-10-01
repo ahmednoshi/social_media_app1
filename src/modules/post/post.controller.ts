@@ -27,6 +27,13 @@ postRouter.patch("/disLike/:postId",authentication(),postService.disLike);
 postRouter.patch("/updatePost/:postId/",authentication(),cloudFileUpload({Validation:fileValidation.image}).array("attechment"),postService.updatePost);
 
 
+postRouter.get("/",authentication(),postService.getPost);
+
+postRouter.delete("/:postId",authentication(),postService.deletePost);
+
+
+
+
 
 
 

@@ -170,9 +170,20 @@ class CommentService {
 
 
 
+    deleteComment = async(req:Request,res:Response,next:NextFunction)=>{
+        const { commentId } = req.params as unknown as {commentId:Types.ObjectId};
 
+        const comment = await this.commentModel.findOne({
+            filter:{_id:commentId,createBy:req.user?._id}
+        })
+        if(!comment){
+            throw new AppError("comment not found",404);
+        }
+        await this.commentModel.deleteOne({filter:{_id:commentId}});
 
+        return res.status(201).json({message:"comment deleted successfully",success:true});
 
+    }
 
 
 

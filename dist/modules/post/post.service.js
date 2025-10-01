@@ -9,6 +9,8 @@ const s3_config_1 = require("../../utils/aws/s3.config");
 const uuid_1 = require("uuid");
 const mongoose_1 = require("mongoose");
 const post_repositry_1 = require("./../../DB/repositry/post.repositry");
+const comment_repositry_1 = require("../../DB/repositry/comment.repositry");
+const comment_model_1 = require("../../DB/models/comment.model");
 const PostAvailability = (req) => {
     return [
         { availability: post_model_1.availapilityEnum.public },
@@ -20,6 +22,7 @@ exports.PostAvailability = PostAvailability;
 class PostService {
     userModel = new database_repositry_1.DatabaseRepositry(user_model_1.UserModel);
     postModel = new post_repositry_1.PostRepositry(post_model_1.PostModel);
+    commentModel = new comment_repositry_1.CommentRepositry(comment_model_1.CommentModel);
     constructor() { }
     createPost = async (req, res, next) => {
         if (req.body.tags?.length && (await this.userModel.find({ filter: { _id: { $in: req.body.tags, $ne: req.user?._id } } })).length === req.body.tags?.length) {
@@ -175,6 +178,37 @@ class PostService {
         }
         console.log("req.file >>>", req.file);
         return res.status(201).json({ message: "post updated successfully" });
+    };
+    getPost = async (req, res, next) => {
+        let { page, size } = req.query;
+        const post = await this.postModel.paginate({
+            filter: {
+                createBy: req.user._id
+            },
+            options: {
+                populate: [{ path: "comments", match: { commentId: { $exists: false }, freezedAt: { $exists: false } },
+                        populate: [{ path: "replay", match: { commentId: { $exists: false }, freezedAt: { $exists: false } } }]
+                    }]
+            },
+            page,
+            size,
+        });
+        return res.status(200).json({
+            message: "Done",
+            success: true,
+            data: post
+        });
+    };
+    deletePost = async (req, res, next) => {
+        const { postId } = req.params;
+        const post = await this.postModel.findOne({
+            filter: { _id: postId, createBy: req.user?._id }
+        });
+        if (!post) {
+            throw new app_Error_1.AppError("post not found", 404);
+        }
+        await this.postModel.deleteOne({ filter: { _id: postId } });
+        return res.status(200).json({ message: "post deleted successfully" });
     };
 }
 exports.postService = new PostService();

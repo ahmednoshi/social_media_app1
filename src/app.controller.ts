@@ -16,6 +16,7 @@ import { AppError } from './utils/response/app.Error';
 import connectionDB from './DB/connection';
 import postRouter from './modules/post/post.controller';
 import multer from 'multer';
+import commentRouter from './modules/comment/comment.controller';
 
 
 const limiter = rateLimit({
@@ -30,8 +31,8 @@ const limiter = rateLimit({
 export const bootstarap = async ():Promise<void>=>{
     const app:Express = express();
     app.use(express.json());    
-    const upload = multer();
-    app.use(upload.none()); 
+    // const upload = multer();
+    // app.use(upload.none()); 
 
 
 
@@ -42,7 +43,8 @@ export const bootstarap = async ():Promise<void>=>{
     app.use(cors(),helmet(),limiter);
 
     app.use("/user",userRouter);
-    app.use("/post",postRouter)
+    app.use("/post",postRouter);
+    app.use("/comment",commentRouter);
 
     
 

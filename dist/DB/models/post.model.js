@@ -44,5 +44,21 @@ const postSchema = new mongoose_1.Schema({
     freezedAt: { type: Date },
     restoreBy: { type: mongoose_1.Schema.Types.ObjectId, ref: "User" },
     restoreAt: { type: Date },
-}, { timestamps: true });
+}, { timestamps: true, toObject: { virtuals: true }, toJSON: { virtuals: true } });
+postSchema.virtual("comments", {
+    ref: "Comment",
+    localField: "_id",
+    foreignField: "postId",
+    justOne: true
+});
+postSchema.pre("deleteOne", async function (next) {
+    const filter = this.getFilter();
+    const comment = await mongoose_1.models.Comment.find({ postId: filter._id });
+    if (comment.length) {
+        for (const comm of comment) {
+            await mongoose_1.models.Comment.deleteMany({ _id: comm._id });
+        }
+    }
+    next();
+});
 exports.PostModel = mongoose_1.models.Post || (0, mongoose_1.model)("Post", postSchema);

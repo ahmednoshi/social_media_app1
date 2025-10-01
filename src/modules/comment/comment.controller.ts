@@ -19,6 +19,11 @@ commentRouter.post("/:commentId/replay",
 
 );
 
+commentRouter.delete("/:commentId/delete",
+    authentication(),
+    CommentService.deleteComment
+);
+
 
 
 export default commentRouter;

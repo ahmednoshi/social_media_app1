@@ -55,6 +55,7 @@ export const detectSingnatureLevel = async(role:RoleEnum=RoleEnum.user):Promise<
 
     switch(role){
         case RoleEnum.admin:
+        case RoleEnum.superAdmin:
             signatureLevel = signatureLevelEnum.admin;
             break;
             default:

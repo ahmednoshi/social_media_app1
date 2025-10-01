@@ -8,6 +8,8 @@ import {  deleteFiles, uploadFiles } from "../../utils/aws/s3.config";
 import {v4 as uuid} from "uuid"
 import { ObjectId, Types } from "mongoose";
 import { PostRepositry } from './../../DB/repositry/post.repositry';
+import { CommentRepositry } from "../../DB/repositry/comment.repositry";
+import { CommentModel } from "../../DB/models/comment.model";
 export const PostAvailability = (req:Request)=>{
     return [
         {availability:availapilityEnum.public},
@@ -19,7 +21,8 @@ export const PostAvailability = (req:Request)=>{
 
 class PostService{
     private userModel = new DatabaseRepositry<IUser>(UserModel);
-    private postModel = new PostRepositry(PostModel)
+    private postModel = new PostRepositry(PostModel);
+    private commentModel = new CommentRepositry(CommentModel);
     constructor(){}
 
 
@@ -308,8 +311,58 @@ class PostService{
     }
 
 
+    getPost = async (req:Request,res:Response,next:NextFunction)=>{
+        let {page , size} = req.query as unknown as {page:number,size:number};
+
+        const post = await this.postModel.paginate({
+            filter : {
+                createBy:req.user!._id
+            },
+            options:{
+                populate:[{path:"comments",match:{commentId:{$exists:false},freezedAt:{$exists:false}},
+
+                    populate:[{path:"replay",match:{commentId:{$exists:false},freezedAt:{$exists:false}}}]
+                
+                }]
+            },
+            page,
+            size,
+        })
 
 
+        return res.status(200).json({
+            message:"Done",
+            success:true, 
+            data:post
+        });
+
+
+
+
+
+
+
+
+
+
+}
+
+
+deletePost = async (req:Request,res:Response,next:NextFunction)=>{
+        const {postId} = req.params as unknown as {postId:Types.ObjectId};
+
+        const post = await this.postModel.findOne({
+            filter:{_id:postId,createBy:req.user?._id}
+        })
+        if(!post){
+            throw new AppError("post not found",404);
+        }
+
+        await this.postModel.deleteOne({filter:{_id:postId}});
+
+        return res.status(200).json({message:"post deleted successfully"});
+
+}
 
 
 

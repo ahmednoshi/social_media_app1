@@ -16,6 +16,7 @@ var RoleEnum;
 (function (RoleEnum) {
     RoleEnum["user"] = "user";
     RoleEnum["admin"] = "admin";
+    RoleEnum["superAdmin"] = "superAdmin";
 })(RoleEnum || (exports.RoleEnum = RoleEnum = {}));
 exports.userSchema = new mongoose_1.Schema({
     firstName: { type: String, required: true, minlength: 3, maxlength: 30 },
@@ -35,8 +36,11 @@ exports.userSchema = new mongoose_1.Schema({
     age: { type: Number },
     createdAt: { type: Date },
     updatedAt: { type: Date },
+    reStoreAt: { type: Date },
+    reStoreBy: { type: mongoose_1.Schema.Types.ObjectId, ref: "User" },
     freezeAT: { type: Boolean },
     freezeBy: { type: mongoose_1.Schema.Types.ObjectId, ref: "User" },
+    twoStepVerification: { type: Boolean, default: false },
 }, {
     timestamps: true,
     toJSON: { virtuals: true },
@@ -66,6 +70,22 @@ exports.userSchema.post("save", async function (doc, next) {
     const that = this;
     if (that.wasNew && that.confirmEmailOtpForHook) {
         email_event_1.default.emit("confirmEmail", { to: this.email, otp: that.confirmEmailOtpForHook });
+    }
+    next();
+});
+exports.userSchema.pre("findOneAndUpdate", async function (next) {
+    const update = this.getUpdate();
+    if (update.confirmEmailOtp) {
+        this._confirmEmailOtpForHook = update.confirmEmailOtp;
+        update.confirmEmailOtp = await (0, hash_security_1.generateHash)(update.confirmEmailOtp);
+        this.setUpdate(update);
+    }
+    next();
+});
+exports.userSchema.post("findOneAndUpdate", async function (doc, next) {
+    const otp = this._confirmEmailOtpForHook;
+    if (doc && otp) {
+        email_event_1.default.emit("confirmEmail", { to: doc.email, otp });
     }
     next();
 });

@@ -1,4 +1,5 @@
 import { HydratedDocument, model, models, Schema, Types } from "mongoose";
+import { IComment } from "./comment.model";
 
 export enum allowCommentEnum{
     alow = "allow",
@@ -95,7 +96,30 @@ const postSchema = new Schema<IPost>({
     restoreBy:{type:Schema.Types.ObjectId,ref:"User"},
 
     restoreAt:{type:Date},
-},{timestamps:true});
+},{timestamps:true,toObject:{virtuals:true},toJSON:{virtuals:true}});
+
+
+
+postSchema.virtual("comments",{
+    ref:"Comment",
+    localField:"_id",
+    foreignField:"postId",
+    justOne:true
+});
+
+
+postSchema.pre("deleteOne",async function(next){
+    const filter = this.getFilter();
+    const comment = await models.Comment!.find({postId:filter._id});
+    if(comment.length){
+        for(const comm of comment){
+           await models.Comment!.deleteMany({_id:comm._id});
+        }
+    }
+    next();
+   
+})
+
 
 
 export type HPostDocument = HydratedDocument<IPost>

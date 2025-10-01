@@ -17,7 +17,7 @@ const user_controller_1 = __importDefault(require("./modules/user/user.controlle
 const app_Error_1 = require("./utils/response/app.Error");
 const connection_1 = __importDefault(require("./DB/connection"));
 const post_controller_1 = __importDefault(require("./modules/post/post.controller"));
-const multer_1 = __importDefault(require("multer"));
+const comment_controller_1 = __importDefault(require("./modules/comment/comment.controller"));
 const limiter = (0, express_rate_limit_1.rateLimit)({
     windowMs: 15 * 60 * 1000,
     max: 100,
@@ -27,12 +27,11 @@ const limiter = (0, express_rate_limit_1.rateLimit)({
 const bootstarap = async () => {
     const app = (0, express_1.default)();
     app.use(express_1.default.json());
-    const upload = (0, multer_1.default)();
-    app.use(upload.none());
     const PORT = process.env.PORT || 5000;
     app.use((0, cors_1.default)(), (0, helmet_1.default)(), limiter);
     app.use("/user", user_controller_1.default);
     app.use("/post", post_controller_1.default);
+    app.use("/comment", comment_controller_1.default);
     app.get('/', (req, res) => {
         res.send(`welcome to ${process.env.APPLICATION_NAME} ❤️ 🐉`);
     });

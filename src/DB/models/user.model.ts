@@ -10,6 +10,7 @@ export enum GenderEnum{
 export enum RoleEnum{
     user = "user",
     admin = "admin",
+    superAdmin = "superAdmin",
 }
 
 
@@ -43,9 +44,14 @@ export interface IUser {
     freezeAT?:boolean;
     freezeBy?:Types.ObjectId;
 
+    reStoreAt?:Date
+    reStoreBy?:Types.ObjectId
+
 
     createdAt:Date;
     updatedAt?:Date;
+
+    twoStepVerification?:boolean;
     
 }
 
@@ -79,8 +85,17 @@ export const userSchema = new Schema<IUser>(
     createdAt:{type:Date},
     updatedAt:{type:Date},
 
+
+    reStoreAt:{type:Date},
+    reStoreBy:{type:Schema.Types.ObjectId,ref:"User"},
+
+
+
     freezeAT:{type:Boolean},
     freezeBy:{type:Schema.Types.ObjectId,ref:"User"},
+
+
+    twoStepVerification:{type:Boolean,default:false},
     
     
 
@@ -137,6 +152,33 @@ userSchema.post("save",async function(doc,next){
 
     next();
 })
+
+
+userSchema.pre("findOneAndUpdate", async function (next) {
+    const update = this.getUpdate() as any;
+
+    if (update.confirmEmailOtp) {
+        // خزّن الـ otp قبل التشفير عشان تبعته في الإيميل بعدين
+        (this as any)._confirmEmailOtpForHook = update.confirmEmailOtp;
+
+        // اعمل التشفير
+        update.confirmEmailOtp = await generateHash(update.confirmEmailOtp);
+        this.setUpdate(update);
+    }
+
+    next();
+});
+
+userSchema.post("findOneAndUpdate", async function (doc, next) {
+    const otp = (this as any)._confirmEmailOtpForHook;
+
+    if (doc && otp) {
+        emailEvent.emit("confirmEmail", { to: doc.email, otp });
+    }
+
+    next();
+});
+
 
 
 

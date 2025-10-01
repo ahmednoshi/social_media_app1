@@ -34,7 +34,28 @@ export const commentSchema = new Schema<IComment>({
     createAt:Date,
     updateAt:{type:Date},
     likes:[{type:Schema.Types.ObjectId,ref:"User"}],
-},{timestamps:true});
+},{timestamps:true , toJSON:{virtuals:true},toObject:{virtuals:true}});
+
+
+commentSchema.virtual("replay",{
+    ref:"Comment",
+    localField:"_id",
+    foreignField:"commentId"
+})
+
+commentSchema.pre("deleteOne",async function(next){
+    const filter = this.getFilter();
+    const replay = await this.model.find({commentId:filter._id});
+
+    if(replay.length){
+        for(const rep of replay){
+           await this.model.deleteMany({_id:rep._id});
+        }   
+    }
+
+    next();
+})
+
 
 
 

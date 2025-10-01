@@ -1,9 +1,10 @@
-import {  Router } from "express";
+import e, {  Router } from "express";
 import UserService from "./user.service";
 import * as validators from "./user.validation";
 import { validation } from "../../middleware/validation.middleware";
-import { authentication } from "../../middleware/authentication.middleware";
+import { authentication, authorization } from "../../middleware/authentication.middleware";
 import { tokenTypeEnum } from "../../utils/security/token.security";
+import { endPoint } from "./user.authorization";
 // import { authentication, authorization } from "../../middleware/authentication.middleware";
 // import { endPoint } from "./user.authorization";
 
@@ -20,8 +21,22 @@ userRouter.post('/refresh_token',authentication(tokenTypeEnum.refresh),UserServi
 userRouter.patch('/sendForgetPasswordOtp',UserService.sendForgetPasswordOtp);
 userRouter.patch('/verifyForgetPasswordOtp',UserService.verifyForgetPasswordOtp);
 userRouter.patch('/resetForgetPasswordOtp',UserService.resetForgetPasswordOtp);
-userRouter.patch('/freezeAccount/:id',authentication(),UserService.freezeUser);
+userRouter.delete('/freezeAccount/:id',authentication(),UserService.freezeUser);
 userRouter.patch('/changePassword',authentication(),UserService.changePassword);
+userRouter.get('/dashBorad',authorization(endPoint.dashBorad),UserService.dashBorad);
+userRouter.patch('/:userId/changeRole',authorization(endPoint.dashBorad),UserService.changeRole);
+userRouter.post('/:userId/send-freinds-request',authentication(),UserService.sendFreindsRequest);
+userRouter.patch('/accept-freinds-request/:id',authentication(),UserService.acceptFreindsRequest);
+userRouter.patch('/reSendOtp',UserService.reSendOtp);
+userRouter.get('/profile',authentication(),UserService.shareProfile);
+userRouter.delete('/deleteAccount/:userId',authentication(),authorization(endPoint.dashBorad),UserService.unFreezeUser);
+userRouter.patch('/updateEmail{/:userId}',authentication(),UserService.updateEamil);
+userRouter.patch('/updateProfile{/:userId}',authentication(),UserService.updateProfile);
+userRouter.patch('/toggleTwoStepVerification',authentication(),UserService.twoStepVerification);
+userRouter.patch('/verifyTwoStepVerification/:userId',authentication(),UserService.verifyTwoStepVerification);
+userRouter.post('/verifyLoginOtp',UserService.verifyLoginOtp);
+
+
 
 
 

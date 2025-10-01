@@ -84,7 +84,7 @@ async find(
 }:{
      filter: RootFilterQuery<TDocument>,
       projection?: ProjectionType<TDocument> | null | undefined,
-      options?:QueryOptions<TDocument> | null,
+      options?:QueryOptions<TDocument> | null | undefined,
 }):Promise<HydratedDocument<FlattenMaps<TDocument>>[]> {
     return await this.model.find( filter , projection , options );
 }
@@ -149,6 +149,26 @@ async deleteMany({filter}:{
     return await this.model.deleteMany(filter);
 }
 
+
+
+
+
+async paginate(
+    {
+    filter,projection={},options={},page=1,size=5
+}:{
+     filter: RootFilterQuery<TDocument>,
+      projection?: ProjectionType<TDocument>  | undefined,
+      options?:QueryOptions<TDocument> | undefined,
+      page?:number,
+      size?:number
+}):Promise<HydratedDocument<FlattenMaps<TDocument>>[] | any> {
+    page = Math.floor(page<1 ? 1 : page);
+    options.limit = Math.floor(size<1 || !size?5:size);
+    options.skip =(page - 1)* options.limit;    
+    const result = await this.find( {filter , projection , options} );
+    return result
+}
 
 
 

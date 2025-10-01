@@ -52,5 +52,12 @@ class DatabaseRepositry {
     async deleteMany({ filter }) {
         return await this.model.deleteMany(filter);
     }
+    async paginate({ filter, projection = {}, options = {}, page = 1, size = 5 }) {
+        page = Math.floor(page < 1 ? 1 : page);
+        options.limit = Math.floor(size < 1 || !size ? 5 : size);
+        options.skip = (page - 1) * options.limit;
+        const result = await this.find({ filter, projection, options });
+        return result;
+    }
 }
 exports.DatabaseRepositry = DatabaseRepositry;

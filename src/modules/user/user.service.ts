@@ -2,20 +2,27 @@ import { Request, Response } from "express";
 import { CreateUserDto, LoginUserDto } from "./user.dto";
 import { DatabaseRepositry } from "../../DB/repositry/database.repositry";
 // import {  Model } from "mongoose";
-import { HUserDocument, IUser, RoleEnum, UserModel } from "../../DB/models/user.model";
+import { GenderEnum, HUserDocument, IUser, RoleEnum, UserModel } from "../../DB/models/user.model";
 import { AppError } from "../../utils/response/app.Error";
 import { compareHash, generateHash } from './../../utils/security/hash.security';
 import emailEvent from "../../utils/event/email.event";
 import { generateOtp } from "../../utils/otp";
 import { createCredentialToken, createRevokeToken, LogoutEnum } from './../../utils/security/token.security';
-import { UpdateQuery } from "mongoose";
+import { Types, UpdateQuery } from "mongoose";
 import {  TokenModel } from "../../DB/models/token.model";
 import { tokenRepositry } from "../../DB/repositry/token.repositry";
 import { JwtPayload } from "jsonwebtoken";
+import { PostModel } from './../../DB/models/post.model';
+import { PostRepositry } from "../../DB/repositry/post.repositry";
+import { friendsRequestRepositry } from "../../DB/repositry/friendsRequest.repositry";
+import { friendsRequestModel, statusEnum } from "../../DB/models/friends.Request.model";
+import { log } from "node:console";
 
 
 class UserService {
     private userModel = new DatabaseRepositry<IUser>(UserModel);
+    private postModel = new PostRepositry(PostModel);
+    private friendsRequestModel = new friendsRequestRepositry( friendsRequestModel)
     private tokenModel = new tokenRepositry(TokenModel);
 
 
@@ -45,6 +52,8 @@ class UserService {
         return res.status(201).json({message:"user created successfully",data:{user}});
 
     }
+
+
 
     confirmEmail= async (req:Request,res:Response):Promise<Response>=>{
 
@@ -108,10 +117,22 @@ class UserService {
             throw new AppError("invalid password",400);
         }
 
-        const Credentials = await createCredentialToken(user);
+        if(user.twoStepVerification===false){
+                    const Credentials = await createCredentialToken(user);
+                    return res.status(200).json({message:"login successfully",data:{Credentials}});
+        }else{
+            const otp = generateOtp();
+            console.log(otp);
+            await this.userModel.findOneAndUpdate({
+                filter:{_id:user._id},
+                update:{confirmEmailOtp:`${String(otp)}`},
+                options:{new:true}
+            })
+            return res.status(200).json({message:"two step verification code sent to your email"});
 
+        }
 
-        return res.status(200).json({message:"login successfully",data:{Credentials}});
+        // return res.status(200).json({message:"login successfully",data:{Credentials}});
 
 
 
@@ -121,6 +142,36 @@ class UserService {
 
 
     }
+
+
+    verifyLoginOtp = async (req: Request, res: Response): Promise<Response> => {
+    const { email, otp } = req.body as { email: string; otp: string };
+
+    const user = await this.userModel.findOne({ filter:{ email } });
+
+    if (!user) {
+        throw new AppError("user not found", 404);
+    }
+
+    if(!await compareHash(otp as string,user.confirmEmailOtp as string)){
+            throw new AppError("invalid otp",400);
+    }
+
+
+    await this.userModel.findOneAndUpdate({
+        filter:{ _id: user._id },
+        update:{ $unset: { confirmEmailOtp: 1 } },
+        options:{ new: true }
+    });
+
+    const Credentials = await createCredentialToken(user);
+
+    return res.status(200).json({ 
+        message: "login successful",
+        data: { Credentials }
+    });
+};
+
 
 
     logout = async (req:Request,res:Response):Promise<Response>=>{
@@ -320,10 +371,335 @@ class UserService {
 
     }
 
+
+    dashBorad = async (req:Request,res:Response):Promise<Response>=>{
+
+        const result = await Promise.allSettled([
+            this.userModel.find({filter:{}}),
+            this.postModel.find({filter:{}}),
+        ])
+
+        return res.status(200).json({message:"dashboard",data:{result}});
+
+    }
+
+    changeRole = async (req:Request,res:Response):Promise<Response>=>{
+        const {userId} = req.params as unknown as {userId:Types.ObjectId};
+        const {role}:{role:RoleEnum} = req.body as unknown as {role:RoleEnum};
+
+        const denyRloes:RoleEnum[]= [role,RoleEnum.superAdmin];
+        if(req.user?.role === RoleEnum.admin){
+            denyRloes.push(RoleEnum.admin);
+        }
+
+        const user = await this.userModel.findOneAndUpdate({
+            filter:{_id:userId as Types.ObjectId ,role:{$nin:denyRloes}},
+            update:{role},
+            options:{new:true}
+        })
+        console.log( user, userId,role);
+        
+        if(!user){
+            throw new AppError("user not found",404);
+        }
+
+        return res.status(200).json({message:"role changed successfully"});
+
+    }
+
+
+    sendFreindsRequest = async (req:Request,res:Response):Promise<Response>=>{
+
+        const {userId} = req.params as unknown as {userId:Types.ObjectId};
+
+        const freindsRequestExists = await this.friendsRequestModel.findOne({
+            filter:{
+                createBy:{$in:[req.user?._id , userId]},
+                senderTo:{$in:[req.user?._id , userId]},
+            }
+                })
+
+
+
+                if(freindsRequestExists){
+                    throw new AppError("freinds request already exists",400);
+                }
+
+
+                const user = await this.userModel.findOne({
+                    filter:{_id:userId}
+                })
+
+                if(!user){
+                    throw new AppError("user not found",404);
+                }
+
+                const [freindsRequest] = await this.friendsRequestModel.create({
+                    data:[{
+                        createBy:req.user?._id as Types.ObjectId,
+                        senderTo:userId,
+                        status:statusEnum.pending
+                    }]
+                }) || []
+
+                if(!freindsRequest){
+                    throw new AppError("fail to send freinds request",400);
+                }
+
+                return res.status(200).json({message:"freinds request sent successfully",data:{freindsRequest}});
+    }
+
+
+    acceptFreindsRequest = async (req:Request,res:Response):Promise<Response>=>{
+        const {id} = req.params as unknown as {id:Types.ObjectId};
+
+        const freindsRequest = await this.friendsRequestModel.findOneAndUpdate({
+            filter:{_id:id,senderTo:req.user?._id,status:statusEnum.pending},
+            update:{accepted:new Date(),status:statusEnum.accepted},
+            options:{new:true}
+        })
+
+        if(!freindsRequest){
+            throw new AppError("freinds request not found",404);
+        }
+
+
+        await Promise.all([
+            await this.userModel.updateOne({
+                filter:{_id:freindsRequest.createBy},
+                update:{$addToSet:{friends:freindsRequest.senderTo}}
+            }),
+
+            await this.userModel.updateOne({
+                filter:{_id:freindsRequest.senderTo},
+                update:{$addToSet:{friends:freindsRequest.createBy}}
+            })
+        ])
+
+        return res.status(200).json({message:"freinds request accepted successfully"});
+
+    }
+
+
+
+    reSendOtp = async (req:Request,res:Response):Promise<Response>=>{
+
+        const {email} = req.body as unknown as {email:string};
+
+
+        const user = await this.userModel.findOne({
+            filter:{email,confirmAT:{$exists:false}}
+        })
+
+        if(!user){
+            throw new AppError("user not found",404);
+        }
+
+        const otp = await generateOtp();
+
+
+        await this.userModel.findOneAndUpdate({
+            filter:{email,confirmAT:{$exists:false}},
+            update:{confirmEmailOtp:`${String(otp)}`},
+            options:{new:true}
+        })
+
+
+        // await user.save();
+
+
+        return res.status(200).json({message:"otp re-send successfully",});
+
+    }
+
+
+    shareProfile = async (req:Request,res:Response):Promise<Response>=>{
+        const fullUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+        return res.status(200).json({ message: fullUrl });
+    }
+
+
+    unFreezeUser = async (req:Request,res:Response):Promise<Response>=>{
+
+        const {userId} = req.params as unknown as {userId:Types.ObjectId};
+
+        if(req.user?.role !== RoleEnum.superAdmin && req.user?.role !== RoleEnum.admin){
+            throw new AppError("only super admin and admin can unfreeze user",403);
+        }
+
+        const user = await this.userModel.findOneAndUpdate({
+            filter:{_id:userId,freeze:true},
+            update:{
+                $unset:{freezeAt:1,freezeBy:1},
+                reStoreAt:new Date(),
+                reStoreBy:req.user?._id
+            },
+            options:{new:true}
+        })
+
+        if(!user){
+            throw new AppError("user not found",404);
+        }
+
+        return res.status(200).json({message:"user unfrozen successfully"});
+
+    }
+
+
+    updateEamil = async (req:Request,res:Response):Promise<Response>=>{
+        const {email} = req.body as unknown as {email:string};
+        const { userId } = req.params as { userId?: string };
+
+        if(!email){
+            throw new AppError("email is required",400);
+        }
+
+    let targetUserId: Types.ObjectId = req.user!._id;
+
+    if (req.user?.role === RoleEnum.admin || req.user?.role === RoleEnum.superAdmin) {
     
+        if (userId) {
+            targetUserId = new Types.ObjectId(userId);
+        }
+    } else {
+        if (userId && !new Types.ObjectId(userId).equals(req.user?._id)) {
+            throw new AppError("only super admin and super admin can update other users' email", 403);
+        }
+    }
 
 
-}
+        const user = await this.userModel.findOneAndUpdate({
+            filter:{_id:targetUserId},
+            update:{email},
+            options:{new:true}
+        })
+
+
+        if(!user){
+            throw new AppError("user not found",404);
+        }
+
+
+        return res.status(200).json({message:"email updated successfully"});
+
+
+    }
+
+
+
+    updateProfile = async (req:Request,res:Response):Promise<Response>=>{
+        const {firstName,lastName,gender} = req.body as unknown as {firstName?:string,lastName?:string,gender?:GenderEnum};
+
+        const { userId } = req.params as { userId?: string };       
+
+        let targetUserId: Types.ObjectId = req.user!._id;
+
+        if (req.user?.role === RoleEnum.admin || req.user?.role === RoleEnum.superAdmin) {
+
+            if (userId) {
+                targetUserId = new Types.ObjectId(userId);
+            }
+
+        } else {
+
+            if (userId && !new Types.ObjectId(userId).equals(req.user?._id)) {
+
+                throw new AppError("only super admin and super admin can update other users' profile", 403);
+            }
+        }
+        const user = await this.userModel.findOneAndUpdate({
+
+            filter:{_id:targetUserId},
+            update:{firstName,lastName,gender},
+            options:{new:true}
+        })
+
+        if(!user){
+            throw new AppError("user not found",404);
+        }
+
+        return res.status(200).json({message:"profile updated successfully",data:{user}});
+
+    }
+
+
+    twoStepVerification = async (req:Request,res:Response):Promise<Response>=>{
+        const {email , password } = req.body as unknown as {email:string,password:string};
+
+        if(!email || !password){
+            throw new AppError("email and password are required",400);
+        }
+
+        const user = await this.userModel.findOne({
+            filter:{email}
+        })
+
+        if(!user){
+            throw new AppError("user not found",404);
+        }
+        if(!await compareHash(password,user.password)){
+            throw new AppError("invalid password",400);
+        }
+
+        const otp = generateOtp();
+
+        await this.userModel.findOneAndUpdate({
+            filter:{_id:user?._id},
+            update:{confirmEmailOtp:`${String(otp)}`},
+            options:{new:true}
+        })
+
+
+        return res.status(200).json({message:"otp sent successfully"});
+
+
+
+
+
+
+    }
+
+
+    verifyTwoStepVerification = async (req:Request,res:Response):Promise<Response>=>{
+        const userId = req.user?._id;
+        const {email,otp} = req.body 
+
+        if(!email || !otp){
+            throw new AppError("email and otp are required",400);
+        }
+
+        const user = await this.userModel.findOne({
+            filter:{email,confirmEmailOtp:{$exists:true},_id:userId}
+        })
+
+        if(!user){
+            throw new AppError("user not found",404);
+        }
+
+        if(!await compareHash(otp,user.confirmEmailOtp as string)){
+            throw new AppError("invalid otp",400);
+        }
+
+        await this.userModel.findOneAndUpdate({
+            filter:{_id:user?._id},
+            update:{twoStepVerification:true,$unset:{confirmEmailOtp:1}},
+            options:{new:true}
+        })
+
+        return res.status(200).json({message:"otp verified successfully"});
+
+
+    }
+
+
+
+
+
+
+
+
+    }
+
 
 
 export default new UserService;

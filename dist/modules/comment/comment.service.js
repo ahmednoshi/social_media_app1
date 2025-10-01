@@ -98,5 +98,16 @@ class CommentService {
         }
         return res.status(201).json({ message: "replay created successfully", success: true });
     };
+    deleteComment = async (req, res, next) => {
+        const { commentId } = req.params;
+        const comment = await this.commentModel.findOne({
+            filter: { _id: commentId, createBy: req.user?._id }
+        });
+        if (!comment) {
+            throw new app_Error_1.AppError("comment not found", 404);
+        }
+        await this.commentModel.deleteOne({ filter: { _id: commentId } });
+        return res.status(201).json({ message: "comment deleted successfully", success: true });
+    };
 }
 exports.default = new CommentService;
