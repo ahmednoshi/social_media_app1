@@ -18,6 +18,7 @@ const app_Error_1 = require("./utils/response/app.Error");
 const connection_1 = __importDefault(require("./DB/connection"));
 const post_controller_1 = __importDefault(require("./modules/post/post.controller"));
 const comment_controller_1 = __importDefault(require("./modules/comment/comment.controller"));
+const getway_1 = require("./modules/gateway/getway");
 const limiter = (0, express_rate_limit_1.rateLimit)({
     windowMs: 15 * 60 * 1000,
     max: 100,
@@ -46,8 +47,9 @@ const bootstarap = async () => {
         });
     });
     await (0, connection_1.default)();
-    app.listen(PORT, () => {
+    const httpServer = app.listen(PORT, () => {
         console.log(`Example app listening on ${PORT} !!!!`);
     });
+    (0, getway_1.initializeIo)(httpServer);
 };
 exports.bootstarap = bootstarap;

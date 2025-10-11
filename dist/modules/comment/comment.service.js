@@ -109,5 +109,64 @@ class CommentService {
         await this.commentModel.deleteOne({ filter: { _id: commentId } });
         return res.status(201).json({ message: "comment deleted successfully", success: true });
     };
+    freezeComment = async (req, res, next) => {
+        const { commentId } = req.params;
+        const isAdmin = req.user?.role === user_model_1.RoleEnum.admin || req.user?.role === user_model_1.RoleEnum.superAdmin;
+        const comment = await this.commentModel.findById({
+            id: commentId
+        });
+        if (!comment) {
+            throw new app_Error_1.AppError("comment not found", 404);
+        }
+        if (!isAdmin && comment.createBy.toString() !== req.user?._id.toString()) {
+            throw new app_Error_1.AppError("you are not allowed to freeze this comment", 403);
+        }
+        if (comment.freezedAt) {
+            throw new app_Error_1.AppError("Comment already freezed", 400);
+        }
+        await this.commentModel.updateOne({
+            filter: { _id: commentId },
+            update: { freezedBy: req.user?._id, freezedAt: new Date() },
+        });
+        return res.status(200).json({ message: "comment freezed successfully", success: true });
+    };
+    updateComment = async (req, res, next) => {
+        const { commentId } = req.params;
+        const comment = await this.commentModel.findOne({
+            filter: { _id: commentId, createBy: req.user?._id, freezedAt: { $exists: false } }
+        });
+        if (!comment) {
+            throw new app_Error_1.AppError("comment not found or you are not allowed to update it", 404);
+        }
+        if (req.body.tags?.length && (await this.userModel.find({ filter: { _id: { $in: req.body.tags, $ne: req.user?._id } } })).length === req.body.tags?.length) {
+            throw new app_Error_1.AppError("invalid tags", 400);
+        }
+        await this.commentModel.updateOne({
+            filter: { _id: commentId },
+            update: { ...req.body, updateAt: new Date() },
+        });
+        return res.status(201).json({ message: "comment updated successfully", success: true });
+    };
+    getCommentsById = async (req, res, next) => {
+        const { commentId } = req.params;
+        const isAdmin = req.user?.role === user_model_1.RoleEnum.admin || req.user?.role === user_model_1.RoleEnum.superAdmin;
+        if (!isAdmin) {
+            const comment = await this.commentModel.findOne({
+                filter: { _id: commentId, createBy: req.user?._id, freezedAt: { $exists: false } },
+                options: { populate: { path: "postId", select: "_id createBy availapility", match: { availapility: post_model_1.availapilityEnum.public } } }
+            });
+            if (!comment || !comment.postId?._id) {
+                throw new app_Error_1.AppError("comment not found", 404);
+            }
+        }
+        const comment = await this.commentModel.findOne({
+            filter: { _id: commentId },
+            options: { populate: [{ path: "postId", select: "_id createBy availapility", match: { availapility: post_model_1.availapilityEnum.public } }, { path: "createBy", select: "_id userName profileImage" }] }
+        });
+        if (!comment) {
+            throw new app_Error_1.AppError("comment not found", 404);
+        }
+        return res.status(200).json({ message: "comment found successfully", success: true, comment });
+    };
 }
 exports.default = new CommentService;

@@ -16,7 +16,6 @@ import { PostModel } from './../../DB/models/post.model';
 import { PostRepositry } from "../../DB/repositry/post.repositry";
 import { friendsRequestRepositry } from "../../DB/repositry/friendsRequest.repositry";
 import { friendsRequestModel, statusEnum } from "../../DB/models/friends.Request.model";
-import { log } from "node:console";
 
 
 class UserService {
@@ -122,7 +121,6 @@ class UserService {
                     return res.status(200).json({message:"login successfully",data:{Credentials}});
         }else{
             const otp = generateOtp();
-            console.log(otp);
             await this.userModel.findOneAndUpdate({
                 filter:{_id:user._id},
                 update:{confirmEmailOtp:`${String(otp)}`},
@@ -690,6 +688,127 @@ class UserService {
 
 
     }
+
+
+
+    getProfile = async (req:Request,res:Response):Promise<Response>=>{
+        const  user = await this.userModel.findOne({
+            filter:{_id:req.user?._id},
+            options:{populate:{path:"friends"}}
+        })
+          
+
+        return res.status(200).json({message:"Done",success:true,data:{user,groups: []}});
+    }
+
+
+    blockUser = async (req:Request,res:Response):Promise<Response>=>{
+
+        const {userId} = req.params as unknown as {userId:Types.ObjectId};
+
+        if(req.user?._id.equals(userId)){
+            throw new AppError("you can not block yourself",400);
+        }
+
+        const userToBlock = await this.userModel.findOne({
+            filter:{_id:userId}
+        });
+        
+        if (!userToBlock) {
+        throw new AppError("user to block not found", 404);
+        }   
+
+
+
+        const user = await this.userModel.findOneAndUpdate({
+            filter:{_id:req.user?._id},
+            update:{$addToSet:{blockedUsers:userId},$pull:{friends:userId}},
+            options:{new:true}
+        })
+
+        await this.userModel.updateOne({
+            filter:{_id:userId},
+            update:{$pull:{friends:req.user?._id}}
+        })
+
+
+        
+        if(!user){
+            throw new AppError("user not found",404);
+        }
+
+        return res.status(200).json({message:"user blocked successfully"});
+    }
+
+
+
+    deleteFrinedsRequest = async (req:Request,res:Response):Promise<Response>=>{
+
+        const {id} = req.params as unknown as {id:Types.ObjectId};
+
+
+        const freindsRequest = await this.friendsRequestModel.findOne({
+            filter:{_id:id,$or:[{createBy:req.user?._id},{senderTo:req.user?._id}]}
+        })
+
+        if(!freindsRequest){
+            throw new AppError("freinds request not found",404);
+        }
+
+        await this.friendsRequestModel.deleteOne({filter:{_id:id}});
+
+
+        return res.status(200).json({message:"freinds request deleted successfully"});
+    }
+
+
+
+    unFrineds = async (req:Request,res:Response):Promise<Response>=>{
+        const {id} = req.params as unknown as {id:Types.ObjectId};
+
+
+        const friendsRequset = await this.friendsRequestModel.findOne({
+            filter:{_id:id,$or:[{createBy:req.user?._id},{senderTo:req.user?._id}],status:statusEnum.accepted}
+        })
+
+        if(!friendsRequset){
+            throw new AppError("freinds request not found",404);
+        }
+
+
+        const user = await this.userModel.findOneAndUpdate({
+            filter:{_id:friendsRequset.senderTo as Types.ObjectId},
+            update:{$pull:{friends:friendsRequset.createBy as Types.ObjectId}},
+            options:{new:true}
+        })
+
+        await this.userModel.findOneAndUpdate({
+            filter:{_id:friendsRequset.createBy as Types.ObjectId},
+            update:{$pull:{friends:friendsRequset.senderTo as Types.ObjectId}},
+            options:{new:true}
+        })
+
+        
+
+        if(!user){
+            throw new AppError("user not found",404);
+        }
+
+
+
+
+        return res.status(200).json({message:"Done"});
+    }
+
+
+
+
+
+
+
+
+
+
 
 
 

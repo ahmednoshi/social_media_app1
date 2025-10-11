@@ -78,7 +78,6 @@ class UserService {
         }
         else {
             const otp = (0, otp_1.generateOtp)();
-            console.log(otp);
             await this.userModel.findOneAndUpdate({
                 filter: { _id: user._id },
                 update: { confirmEmailOtp: `${String(otp)}` },
@@ -424,6 +423,72 @@ class UserService {
             options: { new: true }
         });
         return res.status(200).json({ message: "otp verified successfully" });
+    };
+    getProfile = async (req, res) => {
+        const user = await this.userModel.findOne({
+            filter: { _id: req.user?._id },
+            options: { populate: { path: "friends" } }
+        });
+        return res.status(200).json({ message: "Done", success: true, data: { user, groups: [] } });
+    };
+    blockUser = async (req, res) => {
+        const { userId } = req.params;
+        if (req.user?._id.equals(userId)) {
+            throw new app_Error_1.AppError("you can not block yourself", 400);
+        }
+        const userToBlock = await this.userModel.findOne({
+            filter: { _id: userId }
+        });
+        if (!userToBlock) {
+            throw new app_Error_1.AppError("user to block not found", 404);
+        }
+        const user = await this.userModel.findOneAndUpdate({
+            filter: { _id: req.user?._id },
+            update: { $addToSet: { blockedUsers: userId }, $pull: { friends: userId } },
+            options: { new: true }
+        });
+        await this.userModel.updateOne({
+            filter: { _id: userId },
+            update: { $pull: { friends: req.user?._id } }
+        });
+        if (!user) {
+            throw new app_Error_1.AppError("user not found", 404);
+        }
+        return res.status(200).json({ message: "user blocked successfully" });
+    };
+    deleteFrinedsRequest = async (req, res) => {
+        const { id } = req.params;
+        const freindsRequest = await this.friendsRequestModel.findOne({
+            filter: { _id: id, $or: [{ createBy: req.user?._id }, { senderTo: req.user?._id }] }
+        });
+        if (!freindsRequest) {
+            throw new app_Error_1.AppError("freinds request not found", 404);
+        }
+        await this.friendsRequestModel.deleteOne({ filter: { _id: id } });
+        return res.status(200).json({ message: "freinds request deleted successfully" });
+    };
+    unFrineds = async (req, res) => {
+        const { id } = req.params;
+        const friendsRequset = await this.friendsRequestModel.findOne({
+            filter: { _id: id, $or: [{ createBy: req.user?._id }, { senderTo: req.user?._id }], status: friends_Request_model_1.statusEnum.accepted }
+        });
+        if (!friendsRequset) {
+            throw new app_Error_1.AppError("freinds request not found", 404);
+        }
+        const user = await this.userModel.findOneAndUpdate({
+            filter: { _id: friendsRequset.senderTo },
+            update: { $pull: { friends: friendsRequset.createBy } },
+            options: { new: true }
+        });
+        await this.userModel.findOneAndUpdate({
+            filter: { _id: friendsRequset.createBy },
+            update: { $pull: { friends: friendsRequset.senderTo } },
+            options: { new: true }
+        });
+        if (!user) {
+            throw new app_Error_1.AppError("user not found", 404);
+        }
+        return res.status(200).json({ message: "Done" });
     };
 }
 exports.default = new UserService;

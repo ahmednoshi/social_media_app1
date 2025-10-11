@@ -31,6 +31,10 @@ postRouter.get("/",authentication(),postService.getPost);
 
 postRouter.delete("/:postId",authentication(),postService.deletePost);
 
+postRouter.post("/freeze/:postId",authentication(),postService.freezePost);
+
+postRouter.post("/getPostById/:postId",authentication(),postService.getPostById);
+
 
 
 

@@ -1,7 +1,7 @@
 import { NextFunction,Response,Request } from "express";
 import { CommentModel } from "../../DB/models/comment.model";
-import { allowCommentEnum, HPostDocument, PostModel } from "../../DB/models/post.model";
-import { UserModel } from "../../DB/models/user.model";
+import { allowCommentEnum, availapilityEnum, HPostDocument, PostModel } from "../../DB/models/post.model";
+import { RoleEnum, UserModel } from "../../DB/models/user.model";
 import { CommentRepositry } from "../../DB/repositry/comment.repositry";
 import { DatabaseRepositry } from "../../DB/repositry/database.repositry";
 import { PostRepositry } from "../../DB/repositry/post.repositry";
@@ -185,6 +185,109 @@ class CommentService {
 
     }
 
+
+    freezeComment = async(req:Request,res:Response,next:NextFunction)=>{
+
+        const { commentId } = req.params as unknown as {commentId:Types.ObjectId};
+
+        const isAdmin = req.user?.role === RoleEnum.admin || req.user?.role === RoleEnum.superAdmin;
+
+        const comment = await this.commentModel.findById({
+            id:commentId
+        })
+
+        if(!comment){   
+            throw new AppError("comment not found",404);
+        }
+
+        if(!isAdmin && comment.createBy.toString() !== req.user?._id.toString()){
+            throw new AppError("you are not allowed to freeze this comment",403);
+        }
+
+        if (comment.freezedAt) {
+            throw new AppError("Comment already freezed", 400);
+        }
+
+
+        await this.commentModel.updateOne({
+            filter:{_id:commentId},
+            update:{freezedBy:req.user?._id , freezedAt:new Date()},
+            
+        });
+
+        return res.status(200).json({message:"comment freezed successfully",success:true});
+
+
+    }
+
+
+    updateComment = async(req:Request,res:Response,next:NextFunction)=>{
+        const { commentId } = req.params as unknown as {commentId:Types.ObjectId};
+
+        const comment = await this.commentModel.findOne({
+            filter:{_id:commentId,createBy:req.user?._id, freezedAt:{$exists:false}}
+        })
+        if(!comment){
+            throw new AppError("comment not found or you are not allowed to update it",404);
+        }
+
+        if(req.body.tags?.length && (await this.userModel.find({filter:{_id:{$in:req.body.tags,$ne:req.user?._id}}})).length === req.body.tags?.length){
+            throw new AppError("invalid tags",400);
+        }
+
+
+        await this.commentModel.updateOne({
+            filter:{_id:commentId},
+            update:{...req.body,updateAt:new Date()},
+            
+        });
+
+
+        return res.status(201).json({message:"comment updated successfully",success:true});
+
+
+
+
+    }
+
+
+
+    getCommentsById = async(req:Request,res:Response,next:NextFunction)=>{
+
+        const { commentId } = req.params as unknown as {commentId:Types.ObjectId};
+
+        const isAdmin = req.user?.role === RoleEnum.admin || req.user?.role === RoleEnum.superAdmin;
+
+        if(!isAdmin){
+            const comment = await this.commentModel.findOne({
+                filter:{_id:commentId,createBy:req.user?._id,freezedAt:{$exists:false}},
+                options:{populate:{path:"postId",select:"_id createBy availapility",match:{availapility:availapilityEnum.public}}}
+            })
+            if(!comment || !(comment.postId as Partial<HPostDocument>)?._id){
+                throw new AppError("comment not found",404);
+            }
+        }
+
+        const comment = await this.commentModel.findOne({
+            filter:{_id:commentId},
+            options:{populate:[{path:"postId",select:"_id createBy availapility",match:{availapility:availapilityEnum.public}},{path:"createBy",select:"_id userName profileImage"}]}
+        })
+            
+
+        if(!comment){
+            throw new AppError("comment not found",404);
+        }
+
+        return res.status(200).json({message:"comment found successfully",success:true,comment});
+
+
+
+    }
+
+
+
+
+    
 
 
 

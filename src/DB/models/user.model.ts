@@ -52,6 +52,9 @@ export interface IUser {
     updatedAt?:Date;
 
     twoStepVerification?:boolean;
+
+
+    blockedUsers?:Types.ObjectId[];
     
 }
 
@@ -96,6 +99,9 @@ export const userSchema = new Schema<IUser>(
 
 
     twoStepVerification:{type:Boolean,default:false},
+
+
+    blockedUsers:[{type:Schema.Types.ObjectId,ref:"User"}],
     
     
 

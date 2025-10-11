@@ -1,16 +1,19 @@
-import e, {  Router } from "express";
+import  {  Router } from "express";
 import UserService from "./user.service";
 import * as validators from "./user.validation";
 import { validation } from "../../middleware/validation.middleware";
 import { authentication, authorization } from "../../middleware/authentication.middleware";
 import { tokenTypeEnum } from "../../utils/security/token.security";
 import { endPoint } from "./user.authorization";
+import chatRouter from "../chat/chat.controller";
 // import { authentication, authorization } from "../../middleware/authentication.middleware";
 // import { endPoint } from "./user.authorization";
 
 
 
 const userRouter:Router = Router();
+
+userRouter.use("/:userId/chat",chatRouter)
 
 
 userRouter.post('/signup',validation(validators.signUp),UserService.signUp);
@@ -35,6 +38,10 @@ userRouter.patch('/updateProfile{/:userId}',authentication(),UserService.updateP
 userRouter.patch('/toggleTwoStepVerification',authentication(),UserService.twoStepVerification);
 userRouter.patch('/verifyTwoStepVerification/:userId',authentication(),UserService.verifyTwoStepVerification);
 userRouter.post('/verifyLoginOtp',UserService.verifyLoginOtp);
+userRouter.get("/getprofile",authentication(),UserService.getProfile);
+userRouter.patch("/blockUser/:userId",authentication(),UserService.blockUser);
+userRouter.delete("/deleteFriend/:id",authentication(),UserService.deleteFrinedsRequest);
+userRouter.post("/unFrineds/:id",authentication(),UserService.unFrineds);
 
 
 

@@ -51,4 +51,6 @@ postRouter.patch("/disLike/:postId", (0, authentication_middleware_1.authenticat
 postRouter.patch("/updatePost/:postId/", (0, authentication_middleware_1.authentication)(), (0, cloud_multer_1.cloudFileUpload)({ Validation: cloud_multer_1.fileValidation.image }).array("attechment"), post_service_1.postService.updatePost);
 postRouter.get("/", (0, authentication_middleware_1.authentication)(), post_service_1.postService.getPost);
 postRouter.delete("/:postId", (0, authentication_middleware_1.authentication)(), post_service_1.postService.deletePost);
+postRouter.post("/freeze/:postId", (0, authentication_middleware_1.authentication)(), post_service_1.postService.freezePost);
+postRouter.post("/getPostById/:postId", (0, authentication_middleware_1.authentication)(), post_service_1.postService.getPostById);
 exports.default = postRouter;

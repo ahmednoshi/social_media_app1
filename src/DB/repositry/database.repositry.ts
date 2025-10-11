@@ -1,5 +1,5 @@
 
-import { CreateOptions, HydratedDocument,ProjectionType, Model,  QueryOptions, RootFilterQuery, FlattenMaps, UpdateQuery, MongooseUpdateQueryOptions, UpdateWriteOpResult, Types, DeleteResult } from 'mongoose';
+import { CreateOptions, HydratedDocument,ProjectionType, Model,  QueryOptions, RootFilterQuery, FlattenMaps, UpdateQuery, MongooseUpdateQueryOptions, UpdateWriteOpResult, Types, DeleteResult, UpdateResult } from 'mongoose';
 
 
 
@@ -76,6 +76,24 @@ export class DatabaseRepositry<TDocument>{
         filter || {},{...update,$inc:{__v:1}}, options);
 }
 
+
+async updateMany({
+    filter,
+    update,
+    options
+}:{
+    filter: RootFilterQuery<TDocument>,
+    update: UpdateQuery<TDocument> ,
+    options?: MongooseUpdateQueryOptions<TDocument> | null
+}):Promise<UpdateResult>{
+
+    if (!filter || Object.keys(filter).length === 0) {
+    throw new Error("Filter is required to prevent mass update.");
+        }
+
+    return await this.model.updateMany(filter,update, options)
+
+}
 
 
 async find(

@@ -17,6 +17,7 @@ import connectionDB from './DB/connection';
 import postRouter from './modules/post/post.controller';
 import multer from 'multer';
 import commentRouter from './modules/comment/comment.controller';
+import { initializeIo } from './modules/gateway/getway';
 
 
 const limiter = rateLimit({
@@ -78,9 +79,13 @@ export const bootstarap = async ():Promise<void>=>{
 
 
 
-    app.listen(PORT, () => {
+    const httpServer =  app.listen(PORT, () => {
         console.log(`Example app listening on ${PORT} !!!!`);
     });
+
+
+    initializeIo(httpServer);
+
 
 
 

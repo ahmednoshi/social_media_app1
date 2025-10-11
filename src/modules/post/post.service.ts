@@ -1,7 +1,7 @@
 
 import { NextFunction,Response,Request } from "express";
 import { availapilityEnum, PostModel, reactionEnum } from "../../DB/models/post.model"
-import { IUser, UserModel } from "../../DB/models/user.model";
+import { IUser, RoleEnum, UserModel } from "../../DB/models/user.model";
 import { DatabaseRepositry } from "../../DB/repositry/database.repositry";
 import { AppError } from "../../utils/response/app.Error";
 import {  deleteFiles, uploadFiles } from "../../utils/aws/s3.config";
@@ -10,6 +10,7 @@ import { ObjectId, Types } from "mongoose";
 import { PostRepositry } from './../../DB/repositry/post.repositry';
 import { CommentRepositry } from "../../DB/repositry/comment.repositry";
 import { CommentModel } from "../../DB/models/comment.model";
+import emailEvent from "../../utils/event/email.event";
 export const PostAvailability = (req:Request)=>{
     return [
         {availability:availapilityEnum.public},
@@ -48,6 +49,8 @@ class PostService{
         }
 
 
+
+
         let  attechment:string[] = [];
         let assetsFolder:string = uuid();
 
@@ -73,6 +76,23 @@ class PostService{
                 ]
 
             }) || [];
+
+
+        if (post?.tags?.length) {
+        const taggedUsers = await this.userModel.find({
+            filter: { _id: { $in: post.tags } }
+        });
+
+            taggedUsers.forEach(user => {
+                emailEvent.emit("some one mentioned you", {
+            to: user.email, // هنا بقى عندك الايميل
+            mentionedBy: req.user?.username || "Someone",
+            postContent: post.description,
+            postLink: `http://localhost:3000/posts/${post._id}`
+    });
+    });
+}
+
 
         if(!post){
             throw new AppError("fail to create post",400);
@@ -348,7 +368,7 @@ class PostService{
 }
 
 
-deletePost = async (req:Request,res:Response,next:NextFunction)=>{
+    deletePost = async (req:Request,res:Response,next:NextFunction)=>{
         const {postId} = req.params as unknown as {postId:Types.ObjectId};
 
         const post = await this.postModel.findOne({
@@ -363,6 +383,78 @@ deletePost = async (req:Request,res:Response,next:NextFunction)=>{
         return res.status(200).json({message:"post deleted successfully"});
 
 }
+
+
+    freezePost = async (req:Request,res:Response,next:NextFunction)=>{
+        const {postId} = req.params as unknown as {postId:Types.ObjectId};
+
+        const isAdmin = req.user?.role === RoleEnum.admin || req.user?.role === RoleEnum.superAdmin;
+
+        const post = await this.postModel.findById({id:postId});
+
+        if(!post){
+            throw new AppError("post not found ",404);
+        }
+
+        if (post.freezedAt) {
+            throw new AppError("Post already freezed", 400);
+        }
+
+
+        if(!isAdmin && post.createBy.toString() !== req.user?._id.toString()){
+            throw new AppError("you are not allowed to freeze this post",403);
+        }
+
+        const updatedPost = await this.postModel.findByIdAndUpdate({
+            id:postId,
+            update:{
+                freezedAt:new Date(),
+                freezedBy:req.user?._id,
+            },
+            options:{new:true}
+        })
+
+        if(!updatedPost){
+            throw new AppError("fail to freeze post",400);
+        }
+
+        await this.commentModel.updateMany({
+            filter:{postId:post._id,freezedAt:{$exists:false}},
+            update:[{$set:{freezedAt:new Date(),freezedBy:req.user?._id}}]
+        })
+
+        return res.status(200).json({message:"post freezed successfully"});
+    }
+
+
+
+    getPostById = async (req:Request,res:Response,next:NextFunction)=>{
+        const {postId} = req.params as unknown as {postId:Types.ObjectId};
+
+
+        const isAdmin = req.user?.role === RoleEnum.admin || req.user?.role === RoleEnum.superAdmin;
+
+        if(!isAdmin){
+            const post = await this.postModel.findOne({
+                filter:{_id:postId,createBy:req.user?._id},
+                options:{populate:[{path:"createBy",select:"userName email profileImage firstName lastName  gender"}]}
+            })
+            if(!post){
+                throw new AppError("post not found",404);
+            }
+            return res.status(200).json({message:"Done",success:true,data:post});
+        }
+
+        const post = await this.postModel.findOne({
+            filter:{_id:postId},
+            options:{populate:[{path:"createBy",select:"userName email profileImage firstName lastName  gender"}]}
+        })
+
+
+        return res.status(200).json({message:"Done",success:true,data:post});
+
+
+    }
 
 
 

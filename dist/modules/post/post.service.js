@@ -1,4 +1,7 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.postService = exports.PostAvailability = void 0;
 const post_model_1 = require("../../DB/models/post.model");
@@ -11,6 +14,7 @@ const mongoose_1 = require("mongoose");
 const post_repositry_1 = require("./../../DB/repositry/post.repositry");
 const comment_repositry_1 = require("../../DB/repositry/comment.repositry");
 const comment_model_1 = require("../../DB/models/comment.model");
+const email_event_1 = __importDefault(require("../../utils/event/email.event"));
 const PostAvailability = (req) => {
     return [
         { availability: post_model_1.availapilityEnum.public },
@@ -45,6 +49,19 @@ class PostService {
                 }
             ]
         }) || [];
+        if (post?.tags?.length) {
+            const taggedUsers = await this.userModel.find({
+                filter: { _id: { $in: post.tags } }
+            });
+            taggedUsers.forEach(user => {
+                email_event_1.default.emit("some one mentioned you", {
+                    to: user.email,
+                    mentionedBy: req.user?.username || "Someone",
+                    postContent: post.description,
+                    postLink: `http://localhost:3000/posts/${post._id}`
+                });
+            });
+        }
         if (!post) {
             throw new app_Error_1.AppError("fail to create post", 400);
         }
@@ -209,6 +226,55 @@ class PostService {
         }
         await this.postModel.deleteOne({ filter: { _id: postId } });
         return res.status(200).json({ message: "post deleted successfully" });
+    };
+    freezePost = async (req, res, next) => {
+        const { postId } = req.params;
+        const isAdmin = req.user?.role === user_model_1.RoleEnum.admin || req.user?.role === user_model_1.RoleEnum.superAdmin;
+        const post = await this.postModel.findById({ id: postId });
+        if (!post) {
+            throw new app_Error_1.AppError("post not found ", 404);
+        }
+        if (post.freezedAt) {
+            throw new app_Error_1.AppError("Post already freezed", 400);
+        }
+        if (!isAdmin && post.createBy.toString() !== req.user?._id.toString()) {
+            throw new app_Error_1.AppError("you are not allowed to freeze this post", 403);
+        }
+        const updatedPost = await this.postModel.findByIdAndUpdate({
+            id: postId,
+            update: {
+                freezedAt: new Date(),
+                freezedBy: req.user?._id,
+            },
+            options: { new: true }
+        });
+        if (!updatedPost) {
+            throw new app_Error_1.AppError("fail to freeze post", 400);
+        }
+        await this.commentModel.updateMany({
+            filter: { postId: post._id, freezedAt: { $exists: false } },
+            update: [{ $set: { freezedAt: new Date(), freezedBy: req.user?._id } }]
+        });
+        return res.status(200).json({ message: "post freezed successfully" });
+    };
+    getPostById = async (req, res, next) => {
+        const { postId } = req.params;
+        const isAdmin = req.user?.role === user_model_1.RoleEnum.admin || req.user?.role === user_model_1.RoleEnum.superAdmin;
+        if (!isAdmin) {
+            const post = await this.postModel.findOne({
+                filter: { _id: postId, createBy: req.user?._id },
+                options: { populate: [{ path: "createBy", select: "userName email profileImage firstName lastName  gender" }] }
+            });
+            if (!post) {
+                throw new app_Error_1.AppError("post not found", 404);
+            }
+            return res.status(200).json({ message: "Done", success: true, data: post });
+        }
+        const post = await this.postModel.findOne({
+            filter: { _id: postId },
+            options: { populate: [{ path: "createBy", select: "userName email profileImage firstName lastName  gender" }] }
+        });
+        return res.status(200).json({ message: "Done", success: true, data: post });
     };
 }
 exports.postService = new PostService();

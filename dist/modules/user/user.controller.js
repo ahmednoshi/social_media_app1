@@ -43,7 +43,9 @@ const validation_middleware_1 = require("../../middleware/validation.middleware"
 const authentication_middleware_1 = require("../../middleware/authentication.middleware");
 const token_security_1 = require("../../utils/security/token.security");
 const user_authorization_1 = require("./user.authorization");
+const chat_controller_1 = __importDefault(require("../chat/chat.controller"));
 const userRouter = (0, express_1.Router)();
+userRouter.use("/:userId/chat", chat_controller_1.default);
 userRouter.post('/signup', (0, validation_middleware_1.validation)(validators.signUp), user_service_1.default.signUp);
 userRouter.patch('/confirm_email', user_service_1.default.confirmEmail);
 userRouter.post('/login', user_service_1.default.login);
@@ -66,4 +68,8 @@ userRouter.patch('/updateProfile{/:userId}', (0, authentication_middleware_1.aut
 userRouter.patch('/toggleTwoStepVerification', (0, authentication_middleware_1.authentication)(), user_service_1.default.twoStepVerification);
 userRouter.patch('/verifyTwoStepVerification/:userId', (0, authentication_middleware_1.authentication)(), user_service_1.default.verifyTwoStepVerification);
 userRouter.post('/verifyLoginOtp', user_service_1.default.verifyLoginOtp);
+userRouter.get("/getprofile", (0, authentication_middleware_1.authentication)(), user_service_1.default.getProfile);
+userRouter.patch("/blockUser/:userId", (0, authentication_middleware_1.authentication)(), user_service_1.default.blockUser);
+userRouter.delete("/deleteFriend/:id", (0, authentication_middleware_1.authentication)(), user_service_1.default.deleteFrinedsRequest);
+userRouter.post("/unFrineds/:id", (0, authentication_middleware_1.authentication)(), user_service_1.default.unFrineds);
 exports.default = userRouter;

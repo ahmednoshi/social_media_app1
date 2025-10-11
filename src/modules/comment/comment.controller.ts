@@ -25,5 +25,24 @@ commentRouter.delete("/:commentId/delete",
 );
 
 
+commentRouter.post("/freeze/:commentId",
+    authentication(),
+    CommentService.freezeComment
+);
+
+
+commentRouter.patch("/update/:commentId",
+    authentication(),
+    cloudFileUpload({Validation:fileValidation.image}).array("attechment"),
+    CommentService.updateComment
+);
+
+
+commentRouter.post("/getCommentById/:commentId",
+    authentication(),
+    CommentService.getCommentsById
+);
+
+
 
 export default commentRouter;

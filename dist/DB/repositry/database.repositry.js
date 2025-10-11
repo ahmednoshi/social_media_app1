@@ -30,6 +30,12 @@ class DatabaseRepositry {
         }
         return await this.model.updateOne(filter || {}, { ...update, $inc: { __v: 1 } }, options);
     }
+    async updateMany({ filter, update, options }) {
+        if (!filter || Object.keys(filter).length === 0) {
+            throw new Error("Filter is required to prevent mass update.");
+        }
+        return await this.model.updateMany(filter, update, options);
+    }
     async find({ filter, projection, options }) {
         return await this.model.find(filter, projection, options);
     }

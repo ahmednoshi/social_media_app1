@@ -41,6 +41,7 @@ exports.userSchema = new mongoose_1.Schema({
     freezeAT: { type: Boolean },
     freezeBy: { type: mongoose_1.Schema.Types.ObjectId, ref: "User" },
     twoStepVerification: { type: Boolean, default: false },
+    blockedUsers: [{ type: mongoose_1.Schema.Types.ObjectId, ref: "User" }],
 }, {
     timestamps: true,
     toJSON: { virtuals: true },

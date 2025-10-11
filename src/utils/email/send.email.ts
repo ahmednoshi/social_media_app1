@@ -20,7 +20,7 @@ export  const sendEmail = async( data:Mail.Options):Promise<void>=>{
 
     const info = await transporter.sendMail({
     ...data,
-    from: `Confrimation Email For Social Media App <${process.env.EMAIL as string } >`,
+    from: `Social Media App <${process.env.EMAIL as string } >`,
    
   });
 

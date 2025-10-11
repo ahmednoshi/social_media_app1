@@ -16,7 +16,7 @@ const sendEmail = async (data) => {
     });
     const info = await transporter.sendMail({
         ...data,
-        from: `Confrimation Email For Social Media App <${process.env.EMAIL} >`,
+        from: `Social Media App <${process.env.EMAIL} >`,
     });
     console.log("Message sent:", info.messageId);
 };
