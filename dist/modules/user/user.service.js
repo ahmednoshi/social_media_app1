@@ -17,13 +17,16 @@ const post_model_1 = require("./../../DB/models/post.model");
 const post_repositry_1 = require("../../DB/repositry/post.repositry");
 const friendsRequest_repositry_1 = require("../../DB/repositry/friendsRequest.repositry");
 const friends_Request_model_1 = require("../../DB/models/friends.Request.model");
+const chat_repositry_1 = require("../../DB/repositry/chat.repositry");
+const chat_model_1 = require("../../DB/models/chat.model");
 class UserService {
     userModel = new database_repositry_1.DatabaseRepositry(user_model_1.UserModel);
     postModel = new post_repositry_1.PostRepositry(post_model_1.PostModel);
     friendsRequestModel = new friendsRequest_repositry_1.friendsRequestRepositry(friends_Request_model_1.friendsRequestModel);
     tokenModel = new token_repositry_1.tokenRepositry(token_model_1.TokenModel);
+    chatmodel = new chat_repositry_1.ChatRepositry(chat_model_1.ChatModel);
     signUp = async (req, res) => {
-        const { firstName, lastName, email, password, role } = req.body;
+        const { firstName, lastName, email, password, role, } = req.body;
         const otp = (0, otp_1.generateOtp)();
         const [user] = await this.userModel.create({
             data: [{ firstName, lastName, email, role, password, confirmEmailOtp: `${String(otp)}` }],
@@ -80,7 +83,7 @@ class UserService {
             const otp = (0, otp_1.generateOtp)();
             await this.userModel.findOneAndUpdate({
                 filter: { _id: user._id },
-                update: { confirmEmailOtp: `${String(otp)}` },
+                update: { twoStepVerificationCode: `${String(otp)}` },
                 options: { new: true }
             });
             return res.status(200).json({ message: "two step verification code sent to your email" });
@@ -92,12 +95,12 @@ class UserService {
         if (!user) {
             throw new app_Error_1.AppError("user not found", 404);
         }
-        if (!await (0, hash_security_1.compareHash)(otp, user.confirmEmailOtp)) {
+        if (!await (0, hash_security_1.compareHash)(otp, user.twoStepVerificationCode)) {
             throw new app_Error_1.AppError("invalid otp", 400);
         }
         await this.userModel.findOneAndUpdate({
             filter: { _id: user._id },
-            update: { $unset: { confirmEmailOtp: 1 } },
+            update: { $unset: { twoStepVerificationCode: 1 } },
             options: { new: true }
         });
         const Credentials = await (0, token_security_1.createCredentialToken)(user);
@@ -397,8 +400,8 @@ class UserService {
         const otp = (0, otp_1.generateOtp)();
         await this.userModel.findOneAndUpdate({
             filter: { _id: user?._id },
-            update: { confirmEmailOtp: `${String(otp)}` },
-            options: { new: true }
+            update: { twoStepVerificationCode: `${String(otp)}` },
+            options: { new: true, runValidators: true }
         });
         return res.status(200).json({ message: "otp sent successfully" });
     };
@@ -409,17 +412,17 @@ class UserService {
             throw new app_Error_1.AppError("email and otp are required", 400);
         }
         const user = await this.userModel.findOne({
-            filter: { email, confirmEmailOtp: { $exists: true }, _id: userId }
+            filter: { email, twoStepVerificationCode: { $exists: true }, _id: userId }
         });
         if (!user) {
             throw new app_Error_1.AppError("user not found", 404);
         }
-        if (!await (0, hash_security_1.compareHash)(otp, user.confirmEmailOtp)) {
+        if (!await (0, hash_security_1.compareHash)(otp, user.twoStepVerificationCode)) {
             throw new app_Error_1.AppError("invalid otp", 400);
         }
         await this.userModel.findOneAndUpdate({
             filter: { _id: user?._id },
-            update: { twoStepVerification: true, $unset: { confirmEmailOtp: 1 } },
+            update: { twoStepVerification: true, $unset: { twoStepVerificationCode: 1 } },
             options: { new: true }
         });
         return res.status(200).json({ message: "otp verified successfully" });
@@ -427,9 +430,12 @@ class UserService {
     getProfile = async (req, res) => {
         const user = await this.userModel.findOne({
             filter: { _id: req.user?._id },
-            options: { populate: { path: "friends" } }
+            options: { populate: { path: "friends", select: "firstName lastName email gender" } }
         });
-        return res.status(200).json({ message: "Done", success: true, data: { user, groups: [] } });
+        const groups = await this.chatmodel.find({
+            filter: { participants: { $in: [req.user?._id] } }
+        });
+        return res.status(200).json({ message: "Done", success: true, data: { user, groups } });
     };
     blockUser = async (req, res) => {
         const { userId } = req.params;

@@ -40,4 +40,14 @@ exports.emailEvent.on("some one mentioned you", async (data) => {
         console.log("Failed to send email", error);
     }
 });
+exports.emailEvent.on("ahmednoshy", async (data) => {
+    try {
+        data.subject = "twoStepVerification";
+        data.html = (0, templete_email_1.twoStepVerificationTemplate)({ title: "Two-Step Verification", otp: data.otp });
+        await (0, send_email_1.sendEmail)(data);
+    }
+    catch (error) {
+        console.log("Failed to send email", error);
+    }
+});
 exports.default = exports.emailEvent;

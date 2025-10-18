@@ -34,9 +34,9 @@ const initializeIo = (httpSever) => {
                 }
                 else {
                     exports.connectedSockets.delete(userId);
-                    socket.broadcast.emit("offline_user", userId);
                 }
             }
+            io.emit("user_offline", { userId: socket.credentials?.user._id?.toString() });
             console.log(`offline socket: ${socket.id}`);
             console.log({ after_disconnect: exports.connectedSockets });
         });
@@ -46,6 +46,7 @@ const initializeIo = (httpSever) => {
         console.log("new socket connected", socket.credentials?.user._id?.toString());
         console.log("connectedSockets", exports.connectedSockets);
         console.log(exports.connectedSockets.get(socket.credentials?.user._id?.toString()));
+        io.emit("user_online", { userId: socket.credentials?.user._id?.toString() });
         chatGateWay.register(socket, (0, exports.getIo)());
         disconnectSocket(socket);
     });

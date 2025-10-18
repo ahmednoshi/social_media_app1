@@ -26,12 +26,6 @@ export  const sendEmail = async( data:Mail.Options):Promise<void>=>{
 
   console.log("Message sent:", info.messageId);
 
-
-
-
-
-
-
 }
 
 

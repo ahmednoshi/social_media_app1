@@ -5,7 +5,7 @@ import { IAuthSocket } from "./gatway.interface";
 import { ChatGateWay } from './../chat/chat';
 
 export const connectedSockets= new Map<string,string[]>() ;
-let io : Server<IAuthSocket> | undefined = undefined;
+let io : Server | undefined = undefined;
 
 
 export const initializeIo = ( httpSever:HttpServer)=>{
@@ -39,12 +39,14 @@ export const initializeIo = ( httpSever:HttpServer)=>{
       const sockets = connectedSockets.get(userId)!.filter(id => id !== socket.id);
 
       if (sockets.length > 0) {
-        connectedSockets.set(userId, sockets); // still has other connections
+        connectedSockets.set(userId, sockets); 
       } else {
-        connectedSockets.delete(userId); // no more connections
-        socket.broadcast.emit("offline_user", userId);
+        connectedSockets.delete(userId); 
+        // socket.broadcast.emit("offline_user", userId);
       }
     }
+
+     io!.emit("user_offline", { userId: socket.credentials?.user._id?.toString()});
 
     console.log(`offline socket: ${socket.id}`);
     console.log({ after_disconnect: connectedSockets });
@@ -56,13 +58,23 @@ export const initializeIo = ( httpSever:HttpServer)=>{
     const chatGateWay = new ChatGateWay();
 
     io.on("connection",(socket:IAuthSocket)=>{
+
+  
         console.log("new socket connected",socket.credentials?.user._id?.toString());
         console.log( "connectedSockets",connectedSockets);
         console.log( 
             connectedSockets.get(socket.credentials?.user._id?.toString() as string)
         );
 
+
+        
+          io!.emit("user_online",{userId:socket.credentials?.user._id?.toString() });
+
         chatGateWay.register(socket , getIo());
+
+
+
+
 
         disconnectSocket(socket);
 

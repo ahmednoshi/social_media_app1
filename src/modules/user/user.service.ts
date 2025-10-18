@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import  { Request, Response } from "express";
 import { CreateUserDto, LoginUserDto } from "./user.dto";
 import { DatabaseRepositry } from "../../DB/repositry/database.repositry";
 // import {  Model } from "mongoose";
@@ -16,6 +16,8 @@ import { PostModel } from './../../DB/models/post.model';
 import { PostRepositry } from "../../DB/repositry/post.repositry";
 import { friendsRequestRepositry } from "../../DB/repositry/friendsRequest.repositry";
 import { friendsRequestModel, statusEnum } from "../../DB/models/friends.Request.model";
+import { ChatRepositry } from "../../DB/repositry/chat.repositry";
+import { ChatModel } from "../../DB/models/chat.model";
 
 
 class UserService {
@@ -23,11 +25,12 @@ class UserService {
     private postModel = new PostRepositry(PostModel);
     private friendsRequestModel = new friendsRequestRepositry( friendsRequestModel)
     private tokenModel = new tokenRepositry(TokenModel);
+    private chatmodel = new ChatRepositry(ChatModel)
 
 
     signUp = async (req:Request,res:Response):Promise<Response>=>{ 
 
-        const {firstName,lastName,email,password,role}:CreateUserDto = req.body;
+        const {firstName,lastName,email,password,role,}:CreateUserDto = req.body;
 
 
         const otp = generateOtp();
@@ -123,7 +126,7 @@ class UserService {
             const otp = generateOtp();
             await this.userModel.findOneAndUpdate({
                 filter:{_id:user._id},
-                update:{confirmEmailOtp:`${String(otp)}`},
+                update:{twoStepVerificationCode:`${String(otp)}`},
                 options:{new:true}
             })
             return res.status(200).json({message:"two step verification code sent to your email"});
@@ -151,14 +154,14 @@ class UserService {
         throw new AppError("user not found", 404);
     }
 
-    if(!await compareHash(otp as string,user.confirmEmailOtp as string)){
+    if(!await compareHash(otp as string,user.twoStepVerificationCode as string)){
             throw new AppError("invalid otp",400);
     }
 
 
     await this.userModel.findOneAndUpdate({
         filter:{ _id: user._id },
-        update:{ $unset: { confirmEmailOtp: 1 } },
+        update:{ $unset: { twoStepVerificationCode: 1 } },
         options:{ new: true }
     });
 
@@ -643,8 +646,8 @@ class UserService {
 
         await this.userModel.findOneAndUpdate({
             filter:{_id:user?._id},
-            update:{confirmEmailOtp:`${String(otp)}`},
-            options:{new:true}
+            update:{twoStepVerificationCode:`${String(otp)}`},
+            options:{new:true , runValidators: true }
         })
 
 
@@ -667,20 +670,20 @@ class UserService {
         }
 
         const user = await this.userModel.findOne({
-            filter:{email,confirmEmailOtp:{$exists:true},_id:userId}
+            filter:{email,twoStepVerificationCode:{$exists:true},_id:userId}
         })
 
         if(!user){
             throw new AppError("user not found",404);
         }
 
-        if(!await compareHash(otp,user.confirmEmailOtp as string)){
+        if(!await compareHash(otp,user.twoStepVerificationCode as string)){
             throw new AppError("invalid otp",400);
         }
 
         await this.userModel.findOneAndUpdate({
             filter:{_id:user?._id},
-            update:{twoStepVerification:true,$unset:{confirmEmailOtp:1}},
+            update:{twoStepVerification:true,$unset:{twoStepVerificationCode:1}},
             options:{new:true}
         })
 
@@ -694,11 +697,15 @@ class UserService {
     getProfile = async (req:Request,res:Response):Promise<Response>=>{
         const  user = await this.userModel.findOne({
             filter:{_id:req.user?._id},
-            options:{populate:{path:"friends"}}
+            options:{populate:{path:"friends" ,select:"firstName lastName email gender"}}
+        })
+
+        const groups = await this.chatmodel.find({
+            filter:{participants:{$in:[req.user?._id]}}
         })
           
 
-        return res.status(200).json({message:"Done",success:true,data:{user,groups: []}});
+        return res.status(200).json({message:"Done",success:true,data:{user,groups}});
     }
 
 

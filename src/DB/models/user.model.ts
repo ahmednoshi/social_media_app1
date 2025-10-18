@@ -53,6 +53,8 @@ export interface IUser {
 
     twoStepVerification?:boolean;
 
+    twoStepVerificationCode?:string;
+
 
     blockedUsers?:Types.ObjectId[];
     
@@ -99,6 +101,8 @@ export const userSchema = new Schema<IUser>(
 
 
     twoStepVerification:{type:Boolean,default:false},
+
+    twoStepVerificationCode:{type:String},
 
 
     blockedUsers:[{type:Schema.Types.ObjectId,ref:"User"}],
@@ -162,13 +166,15 @@ userSchema.post("save",async function(doc,next){
 
 userSchema.pre("findOneAndUpdate", async function (next) {
     const update = this.getUpdate() as any;
+    
 
-    if (update.confirmEmailOtp) {
+    if (update.twoStepVerificationCode) {
+        
         // خزّن الـ otp قبل التشفير عشان تبعته في الإيميل بعدين
-        (this as any)._confirmEmailOtpForHook = update.confirmEmailOtp;
+        (this as any)._twoStepVerificationCodeHook = update.twoStepVerificationCode;
 
         // اعمل التشفير
-        update.confirmEmailOtp = await generateHash(update.confirmEmailOtp);
+        update.twoStepVerificationCode = await generateHash(update.twoStepVerificationCode);
         this.setUpdate(update);
     }
 
@@ -176,10 +182,10 @@ userSchema.pre("findOneAndUpdate", async function (next) {
 });
 
 userSchema.post("findOneAndUpdate", async function (doc, next) {
-    const otp = (this as any)._confirmEmailOtpForHook;
+    const otp = (this as any)._twoStepVerificationCodeHook;
 
     if (doc && otp) {
-        emailEvent.emit("confirmEmail", { to: doc.email, otp });
+        emailEvent.emit("ahmednoshy", { to: doc.email, otp });
     }
 
     next();

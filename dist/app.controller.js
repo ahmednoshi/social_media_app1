@@ -19,6 +19,7 @@ const connection_1 = __importDefault(require("./DB/connection"));
 const post_controller_1 = __importDefault(require("./modules/post/post.controller"));
 const comment_controller_1 = __importDefault(require("./modules/comment/comment.controller"));
 const getway_1 = require("./modules/gateway/getway");
+const chat_controller_1 = __importDefault(require("./modules/chat/chat.controller"));
 const limiter = (0, express_rate_limit_1.rateLimit)({
     windowMs: 15 * 60 * 1000,
     max: 100,
@@ -33,6 +34,7 @@ const bootstarap = async () => {
     app.use("/user", user_controller_1.default);
     app.use("/post", post_controller_1.default);
     app.use("/comment", comment_controller_1.default);
+    app.use("/chat", chat_controller_1.default);
     app.get('/', (req, res) => {
         res.send(`welcome to ${process.env.APPLICATION_NAME} ❤️ 🐉`);
     });

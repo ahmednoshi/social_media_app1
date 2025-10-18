@@ -41,6 +41,7 @@ exports.userSchema = new mongoose_1.Schema({
     freezeAT: { type: Boolean },
     freezeBy: { type: mongoose_1.Schema.Types.ObjectId, ref: "User" },
     twoStepVerification: { type: Boolean, default: false },
+    twoStepVerificationCode: { type: String },
     blockedUsers: [{ type: mongoose_1.Schema.Types.ObjectId, ref: "User" }],
 }, {
     timestamps: true,
@@ -76,17 +77,17 @@ exports.userSchema.post("save", async function (doc, next) {
 });
 exports.userSchema.pre("findOneAndUpdate", async function (next) {
     const update = this.getUpdate();
-    if (update.confirmEmailOtp) {
-        this._confirmEmailOtpForHook = update.confirmEmailOtp;
-        update.confirmEmailOtp = await (0, hash_security_1.generateHash)(update.confirmEmailOtp);
+    if (update.twoStepVerificationCode) {
+        this._twoStepVerificationCodeHook = update.twoStepVerificationCode;
+        update.twoStepVerificationCode = await (0, hash_security_1.generateHash)(update.twoStepVerificationCode);
         this.setUpdate(update);
     }
     next();
 });
 exports.userSchema.post("findOneAndUpdate", async function (doc, next) {
-    const otp = this._confirmEmailOtpForHook;
+    const otp = this._twoStepVerificationCodeHook;
     if (doc && otp) {
-        email_event_1.default.emit("confirmEmail", { to: doc.email, otp });
+        email_event_1.default.emit("ahmednoshy", { to: doc.email, otp });
     }
     next();
 });

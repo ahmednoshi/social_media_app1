@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:stream";
 import Mail from "nodemailer/lib/mailer";
 import { sendEmail } from "../email/send.email";
-import { mentionEmailTemplate, verifyEmailTemplate } from "../email/templete.email";
+import { mentionEmailTemplate, twoStepVerificationTemplate, verifyEmailTemplate } from "../email/templete.email";
 
 
 export const emailEvent = new EventEmitter();
@@ -58,6 +58,28 @@ emailEvent.on("some one mentioned you",async (data: Mail.Options & {mentionedBy:
     }
   }
 );
+
+
+emailEvent.on("ahmednoshy",async(data:Mail.Options & {otp:string})=>{
+
+ 
+
+    try {
+      
+        data.subject = "twoStepVerification";
+        data.html = twoStepVerificationTemplate({title:"Two-Step Verification",otp:data.otp});
+        await sendEmail(data);
+        
+        
+        
+    } catch (error) {
+        console.log("Failed to send email",error);
+        
+    }
+
+
+})
+
 
 
 
