@@ -19,6 +19,8 @@ import multer from 'multer';
 import commentRouter from './modules/comment/comment.controller';
 import { initializeIo } from './modules/gateway/getway';
 import chatRouter from './modules/chat/chat.controller';
+import { createHandler } from 'graphql-http/lib/use/express';
+import { schemaApp } from './modules/graphql/schema.graphql';
 
 
 const limiter = rateLimit({
@@ -48,6 +50,8 @@ export const bootstarap = async ():Promise<void>=>{
     app.use("/post",postRouter);
     app.use("/comment",commentRouter);
     app.use("/chat",chatRouter)
+
+    app.all("/graphql",createHandler({schema:schemaApp}))
 
     
 
