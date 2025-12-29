@@ -24,7 +24,6 @@ class UserService {
     private userModel = new DatabaseRepositry<IUser>(UserModel);
     private postModel = new PostRepositry(PostModel);
     private friendsRequestModel = new friendsRequestRepositry( friendsRequestModel)
-    private tokenModel = new tokenRepositry(TokenModel);
     private chatmodel = new ChatRepositry(ChatModel)
 
 

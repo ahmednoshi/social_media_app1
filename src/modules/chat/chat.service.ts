@@ -7,6 +7,7 @@ import { DatabaseRepositry } from "../../DB/repositry/database.repositry";
 import { connectedSockets, getIo } from "../gateway/getway";
 import { deleteFiles, uploadFile } from "../../utils/aws/s3.config";
 import {v4 as uuid} from "uuid"
+import { log } from "node:console";
 export class CahtService {
     private chatModel = new ChatRepositry(ChatModel);
     private userModel = new DatabaseRepositry(ChatModel);
@@ -63,7 +64,7 @@ export class CahtService {
       }
     });
 
-    // if (!user) throw new AppError("You can not send message to this user", 400);
+    if (!user) throw new AppError("You can not send message to this user", 400);
 
     let chat = await this.chatModel.findOneAndUpdate({
       filter: {
@@ -126,7 +127,10 @@ export class CahtService {
       });
 
       // if(participants.length != user.length) throw new AppError("You can not create group with this participants",400);
-
+      if(!user){
+        throw new AppError("You can not create group with this participants",400);
+      }
+      
       let group_image:string | undefined = undefined
       const roomId = group.replaceAll(/\s+/g,"_")+"_"+uuid();
 

@@ -1,5 +1,4 @@
 import { HydratedDocument, model, models, Schema, Types } from "mongoose";
-import { IComment } from "./comment.model";
 
 export enum allowCommentEnum{
     alow = "allow",

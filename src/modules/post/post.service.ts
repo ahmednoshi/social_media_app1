@@ -1,6 +1,6 @@
 
 import { NextFunction,Response,Request } from "express";
-import { availapilityEnum, PostModel, reactionEnum } from "../../DB/models/post.model"
+import { availapilityEnum, PostModel } from "../../DB/models/post.model"
 import { IUser, RoleEnum, UserModel } from "../../DB/models/user.model";
 import { DatabaseRepositry } from "../../DB/repositry/database.repositry";
 import { AppError } from "../../utils/response/app.Error";
