@@ -15,7 +15,6 @@ import userRouter from './modules/user/user.controller';
 import { AppError } from './utils/response/app.Error';
 import connectionDB from './DB/connection';
 import postRouter from './modules/post/post.controller';
-import multer from 'multer';
 import commentRouter from './modules/comment/comment.controller';
 import { initializeIo } from './modules/gateway/getway';
 import chatRouter from './modules/chat/chat.controller';

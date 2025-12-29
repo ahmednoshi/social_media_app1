@@ -9,8 +9,6 @@ import emailEvent from "../../utils/event/email.event";
 import { generateOtp } from "../../utils/otp";
 import { createCredentialToken, createRevokeToken, LogoutEnum } from './../../utils/security/token.security';
 import { Types, UpdateQuery } from "mongoose";
-import {  TokenModel } from "../../DB/models/token.model";
-import { tokenRepositry } from "../../DB/repositry/token.repositry";
 import { JwtPayload } from "jsonwebtoken";
 import { PostModel } from './../../DB/models/post.model';
 import { PostRepositry } from "../../DB/repositry/post.repositry";
