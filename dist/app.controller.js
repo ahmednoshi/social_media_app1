@@ -37,6 +37,9 @@ const bootstarap = async () => {
     app.use("/post", post_controller_1.default);
     app.use("/comment", comment_controller_1.default);
     app.use("/chat", chat_controller_1.default);
+    app.get("/", (req, res) => {
+        res.send("API is running 🚀");
+    });
     app.all("/graphql", (0, express_2.createHandler)({ schema: schema_graphql_1.schemaApp }));
     app.get('/', (req, res) => {
         res.send(`welcome to ${process.env.APPLICATION_NAME} ❤️ 🐉`);

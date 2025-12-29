@@ -51,6 +51,10 @@ export const bootstarap = async ():Promise<void>=>{
     app.use("/comment",commentRouter);
     app.use("/chat",chatRouter)
 
+    app.get("/", (req, res) => {
+    res.send("API is running 🚀");
+    });
+
     app.all("/graphql",createHandler({schema:schemaApp}))
 
     
