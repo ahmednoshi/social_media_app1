@@ -1,6 +1,6 @@
-import {createTransport, type Transporter } from 'nodemailer'
+// import {createTransport, type Transporter } from 'nodemailer'
 import Mail from 'nodemailer/lib/mailer';
-import SMTPTransport from 'nodemailer/lib/smtp-transport'
+// import SMTPTransport from 'nodemailer/lib/smtp-transport'
 import { AppError } from '../response/app.Error';
 import sgMail from '@sendgrid/mail';
 
