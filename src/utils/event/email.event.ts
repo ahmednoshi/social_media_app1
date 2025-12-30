@@ -1,4 +1,4 @@
-import { EventEmitter } from "node:stream";
+import { EventEmitter } from "events";
 import Mail from "nodemailer/lib/mailer";
 import { sendEmail } from "../email/send.email";
 import { mentionEmailTemplate, twoStepVerificationTemplate, verifyEmailTemplate } from "../email/templete.email";

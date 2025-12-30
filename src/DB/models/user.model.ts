@@ -139,10 +139,9 @@ userSchema.pre("save",async function(this:HUserDocument&{wasNew:boolean,confirmE
 
     
     
+    
     if(this.isModified("confirmEmailOtp")){
-        console.log(this.confirmEmailOtpForHook);
         this.confirmEmailOtpForHook = this.confirmEmailOtp as string;
-        console.log(this.confirmEmailOtpForHook);
         this.confirmEmailOtp = await generateHash(this.confirmEmailOtp as string);
 
     }
