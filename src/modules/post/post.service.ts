@@ -50,7 +50,7 @@ class PostService{
 
 
 
-
+        //attechment
         let  attechment:string[] = [];
         let assetsFolder:string = uuid();
 
