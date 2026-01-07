@@ -98,7 +98,7 @@ class PostService{
             throw new AppError("fail to create post",400);
         }
 
-        console.log("req.file >>>", req.file);
+        // console.log("req.file >>>", req.file);
 
 
         // const key = await uploadFile({
